@@ -1,0 +1,56 @@
+# Maven
+target/
+pom.xml.tag
+pom*xml.releaseBackup
+pom.xml.versions*ackup
+pom.xml.next
+release.propert*es
+dependency-reduced-pom.xml
+
+# J*va
+*.class
+*.log
+*.jar
+*.war
+*.ear*
+# IDE - IntelliJ IDEA
+.idea/
+*.im*
+*.iws
+*.ipr
+
+# IDE - Eclipse
+.pro*ect
+.classpath
+.settings/
+
+# IDE -*VS Code
+.vscode/
+
+# OS files
+.DS_S*ore
+Thumbs.db
+
+# Spring Boot
+sprin*.log
+
+# H2 database files, if file*based H2 is ever used
+*.db
+*.mv.db**.trace.db
+
+# Environment variable* / local config
+.env
+.env.*
+!.env.*xample
+
+# Docker temporary files
+d*cker-compose.override.yml
+
+# Test * coverage reports
+surefire-reports*
+failsafe-reports/
+coverage/
+jacoc*.exec
+
+# Build output
+out/
