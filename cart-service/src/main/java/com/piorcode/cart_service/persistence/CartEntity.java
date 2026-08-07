@@ -3,10 +3,7 @@ package com.piorcode.cart_service.persistence;
 import jakarta.persistence.*;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "carts")
@@ -48,6 +45,23 @@ public class CartEntity {
 
     public List<CartItemEntity> getItems() {
         return items;
+    }
+
+    public Optional<CartItemEntity> findByProductId(UUID productId) {
+        return items
+            .stream()
+            .filter(item -> item.getProductId().equals(productId))
+            .findFirst();
+    }
+
+    public void addItem(CartItemEntity item) {
+        items.add(item);
+        item.assignToCart(this);
+    }
+
+    public void removeItem(CartItemEntity item) {
+        items.remove(item);
+        item.assignToCart(null);
     }
 
     @Override

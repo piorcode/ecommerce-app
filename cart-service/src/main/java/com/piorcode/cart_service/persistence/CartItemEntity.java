@@ -49,6 +49,18 @@ public class CartItemEntity {
         return quantity;
     }
 
+    public void updateQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public void increaseQuantity(int quantity) {
+        this.quantity += quantity;
+    }
+
+    public void assignToCart(CartEntity cart) {
+        this.cart = cart;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
