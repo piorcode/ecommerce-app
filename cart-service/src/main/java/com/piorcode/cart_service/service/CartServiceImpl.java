@@ -41,7 +41,14 @@ public class CartServiceImpl implements CartService {
             .findByProductId(product.id())
             .ifPresentOrElse(item -> item.increaseQuantity(quantity),
                 () -> {
-                    CartItemEntity item = new CartItemEntity(UUID.randomUUID(), product.id(), quantity);
+                    CartItemEntity item = new CartItemEntity(
+                        UUID.randomUUID(), 
+                        product.id(), 
+                        product.name(), 
+                        product.price(), 
+                        quantity
+                    );
+                    
                     cartEntity.addItem(item);
                 }
             );

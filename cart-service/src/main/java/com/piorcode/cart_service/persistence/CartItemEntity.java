@@ -2,6 +2,7 @@ package com.piorcode.cart_service.persistence;
 
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -22,14 +23,22 @@ public class CartItemEntity {
     private UUID productId;
 
     @Column(nullable = false)
+    private String productName;
+    
+    @Column(nullable = false)
+    private BigDecimal price;
+
+    @Column(nullable = false)
     private int quantity;
 
     public CartItemEntity() {
     }
 
-    public CartItemEntity(UUID id, UUID productId, int quantity) {
+    public CartItemEntity(UUID id, UUID productId, String productName, BigDecimal price, int quantity) {
         this.id = id;
         this.productId = productId;
+        this.productName = productName;
+        this.price = price;
         this.quantity = quantity;
     }
 
@@ -43,6 +52,14 @@ public class CartItemEntity {
 
     public UUID getProductId() {
         return productId;
+    }
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
     }
 
     public int getQuantity() {

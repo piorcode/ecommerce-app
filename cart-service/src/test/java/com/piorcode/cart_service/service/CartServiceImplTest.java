@@ -22,7 +22,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CartServiceImplTest {
@@ -30,6 +31,12 @@ class CartServiceImplTest {
     private static final String USER_ID = "user";
     
     private static final int QUANTITY = 2;
+
+    private static final String PRODUCT_NAME = "Product Name";
+
+    private static final BigDecimal ITEM_PRICE = new BigDecimal("10.0");
+
+    private static final String PRODUCT_DESCRIPTION = "Product Description";
 
     @Mock
     CartRepository cartRepository;
@@ -88,7 +95,7 @@ class CartServiceImplTest {
         int requestedQuantityToAdd = 3;
 
         CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
-        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, QUANTITY));
+        existingCart.addItem(getCartItem(productId));
 
         when(productServiceClient.getProduct(productId)).thenReturn(getProduct(productId, true));
 
@@ -102,6 +109,8 @@ class CartServiceImplTest {
         assertThat(existingCart.getUserId()).isEqualTo(USER_ID);
         assertThat(existingCart.getItems()).hasSize(1);
         assertThat(existingCart.getItems().get(0).getProductId()).isEqualTo(productId);
+        assertThat(existingCart.getItems().get(0).getProductName()).isEqualTo(PRODUCT_NAME);
+        assertThat(existingCart.getItems().get(0).getPrice()).isEqualTo(ITEM_PRICE);
         assertThat(existingCart.getItems().get(0).getQuantity()).isEqualTo(QUANTITY + requestedQuantityToAdd);
 
         verify(cartRepository).save(existingCart);
@@ -114,7 +123,7 @@ class CartServiceImplTest {
         int requestedQuantityToReplace = 3;
 
         CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
-        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, QUANTITY));
+        existingCart.addItem(getCartItem(productId));
 
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
 
@@ -125,6 +134,8 @@ class CartServiceImplTest {
         assertThat(existingCart.getId()).isNotNull();
         assertThat(existingCart.getItems()).hasSize(1);
         assertThat(existingCart.getItems().get(0).getProductId()).isEqualTo(productId);
+        assertThat(existingCart.getItems().get(0).getProductName()).isEqualTo(PRODUCT_NAME);
+        assertThat(existingCart.getItems().get(0).getPrice()).isEqualTo(ITEM_PRICE);
         assertThat(existingCart.getItems().get(0).getQuantity()).isEqualTo(requestedQuantityToReplace);
 
         verify(cartRepository).save(existingCart);
@@ -163,7 +174,7 @@ class CartServiceImplTest {
         UUID productId = UUID.randomUUID();
 
         CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
-        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, QUANTITY));
+        existingCart.addItem(getCartItem(productId));
 
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
 
@@ -176,13 +187,17 @@ class CartServiceImplTest {
         assertThat(existingCart.getItems()).isEmpty();
     }
 
-    private static ProductResponse getProduct(UUID productId, boolean available) {
+    private ProductResponse getProduct(UUID productId, boolean available) {
         return new ProductResponse(
             productId,
-            "Product Name",
-            "Product Description",
-            new BigDecimal("10.0"),
+            PRODUCT_NAME,
+            PRODUCT_DESCRIPTION,
+            ITEM_PRICE,
             available,
             Instant.now());
+    }
+
+    private CartItemEntity getCartItem(UUID productId) {
+        return new CartItemEntity(UUID.randomUUID(), productId, PRODUCT_NAME, ITEM_PRICE, QUANTITY);
     }
 }
