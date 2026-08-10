@@ -1,7 +1,10 @@
 package com.piorcode.cart_service.service;
 
+import com.piorcode.cart_service.api.ProductResponse;
+import com.piorcode.cart_service.client.ProductServiceClient;
 import com.piorcode.cart_service.exception.CartItemNotFoundException;
 import com.piorcode.cart_service.exception.CartNotFoundException;
+import com.piorcode.cart_service.exception.ProductUnavailableException;
 import com.piorcode.cart_service.persistence.CartEntity;
 import com.piorcode.cart_service.persistence.CartItemEntity;
 import com.piorcode.cart_service.persistence.CartRepository;
@@ -12,40 +15,46 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CartServiceImplTest {
+
+    private static final String USER_ID = "user";
     
+    private static final int QUANTITY = 2;
+
     @Mock
     CartRepository cartRepository;
-    
+
+    @Mock
+    ProductServiceClient productServiceClient;
+
     CartService cartService;
 
     @BeforeEach
     void setUp() {
-        cartService = new CartServiceImpl(cartRepository);
+        cartService = new CartServiceImpl(cartRepository, productServiceClient);
     }
-    
+
     @Test
-    void shouldCreateCartAndAddItemWhenCartDoesNotExist() {
+    void shouldCreateCartAndAddAvailableItemWhenCartDoesNotExist() {
         // given
-        String user = "user";
         UUID productId = UUID.randomUUID();
-        int quantity = 2;
-        
-        when(cartRepository.findByUserId(user)).thenReturn(Optional.empty());
-        
+
+        when(productServiceClient.getProduct(productId)).thenReturn(getProduct(productId, true));
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
         // when
-        cartService.addItem(user, productId, quantity);
-        
+        cartService.addItem(USER_ID, productId, QUANTITY);
+
         // then
         ArgumentCaptor<CartEntity> cartCaptor = ArgumentCaptor.forClass(CartEntity.class);
         verify(cartRepository).save(cartCaptor.capture());
@@ -53,121 +62,127 @@ class CartServiceImplTest {
 
         assertThat(saved).isExactlyInstanceOf(CartEntity.class);
         assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getUserId()).isEqualTo(user);
+        assertThat(saved.getUserId()).isEqualTo(USER_ID);
         assertThat(saved.getItems()).hasSize(1);
         assertThat(saved.getItems().get(0).getProductId()).isEqualTo(productId);
-        assertThat(saved.getItems().get(0).getQuantity()).isEqualTo(quantity);
+        assertThat(saved.getItems().get(0).getQuantity()).isEqualTo(QUANTITY);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenProductIsUnavailable() {
+        // given
+        UUID productId = UUID.randomUUID();
+
+        when(productServiceClient.getProduct(productId)).thenReturn(getProduct(productId, false));
+
+        // when
+        assertThatThrownBy(() -> cartService.addItem(USER_ID, productId, QUANTITY))
+            .isInstanceOf(ProductUnavailableException.class)
+            .hasMessage("Product with id: " + productId + " is unavailable");
     }
 
     @Test
     void shouldIncreaseItemQuantityWhenInCart() {
         // given
-        String user = "user";
         UUID productId = UUID.randomUUID();
-        int existingQuantity = 2;
         int requestedQuantityToAdd = 3;
-        
-        CartEntity existingCart = new CartEntity(UUID.randomUUID(), user, Instant.now());
-        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, existingQuantity));
-        
-        when(cartRepository.findByUserId(user)).thenReturn(Optional.of(existingCart));
+
+        CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
+        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, QUANTITY));
+
+        when(productServiceClient.getProduct(productId)).thenReturn(getProduct(productId, true));
+
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
 
         // when
-        cartService.addItem(user, productId, requestedQuantityToAdd);
+        cartService.addItem(USER_ID, productId, requestedQuantityToAdd);
 
         // then
-        ArgumentCaptor<CartEntity> cartCaptor = ArgumentCaptor.forClass(CartEntity.class);
-        verify(cartRepository).save(cartCaptor.capture());
-        CartEntity saved = cartCaptor.getValue();
-        
-        assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getUserId()).isEqualTo(user);
-        assertThat(saved.getItems()).hasSize(1);
-        assertThat(saved.getItems().get(0).getProductId()).isEqualTo(productId);
-        assertThat(saved.getItems().get(0).getQuantity()).isEqualTo(existingQuantity + requestedQuantityToAdd);
+        assertThat(existingCart.getId()).isNotNull();
+        assertThat(existingCart.getUserId()).isEqualTo(USER_ID);
+        assertThat(existingCart.getItems()).hasSize(1);
+        assertThat(existingCart.getItems().get(0).getProductId()).isEqualTo(productId);
+        assertThat(existingCart.getItems().get(0).getQuantity()).isEqualTo(QUANTITY + requestedQuantityToAdd);
+
+        verify(cartRepository).save(existingCart);
     }
 
     @Test
     void shouldUpdateItemQuantityWhenInCart() {
         // given
-        String user = "user";
         UUID productId = UUID.randomUUID();
-        int existingQuantity = 2;
         int requestedQuantityToReplace = 3;
 
-        CartEntity existingCart = new CartEntity(UUID.randomUUID(), user, Instant.now());
-        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, existingQuantity));
+        CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
+        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, QUANTITY));
 
-        when(cartRepository.findByUserId(user)).thenReturn(Optional.of(existingCart));
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
 
         // when
-        cartService.updateItemQuantity(user, productId, requestedQuantityToReplace);
+        cartService.updateItemQuantity(USER_ID, productId, requestedQuantityToReplace);
 
         // then
-        ArgumentCaptor<CartEntity> cartCaptor = ArgumentCaptor.forClass(CartEntity.class);
-        verify(cartRepository).save(cartCaptor.capture());
-        CartEntity saved = cartCaptor.getValue();
+        assertThat(existingCart.getId()).isNotNull();
+        assertThat(existingCart.getItems()).hasSize(1);
+        assertThat(existingCart.getItems().get(0).getProductId()).isEqualTo(productId);
+        assertThat(existingCart.getItems().get(0).getQuantity()).isEqualTo(requestedQuantityToReplace);
 
-        assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getUserId()).isEqualTo(user);
-        assertThat(saved.getItems()).hasSize(1);
-        assertThat(saved.getItems().get(0).getProductId()).isEqualTo(productId);
-        assertThat(saved.getItems().get(0).getQuantity()).isEqualTo(requestedQuantityToReplace);
+        verify(cartRepository).save(existingCart);
     }
 
     @Test
     void shouldThrowExceptionWhenCartItemDoesNotExist() {
         // given
-        String user = "user";
         UUID productId = UUID.randomUUID();
-        int quantity = 2;
 
-        when(cartRepository.findByUserId(user)).thenReturn(Optional.empty());
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         // when
-        assertThatThrownBy(() -> cartService.updateItemQuantity(user, productId, quantity))
+        assertThatThrownBy(() -> cartService.updateItemQuantity(USER_ID, productId, QUANTITY))
             .isInstanceOf(CartNotFoundException.class)
-            .hasMessage("Cart not found for user: " + user);
+            .hasMessage("Cart not found for user: " + USER_ID);
     }
 
     @Test
     void shouldThrowExceptionWhenItemDoesNotExistInCart() {
         // given
-        String user = "user";
         UUID productId = UUID.randomUUID();
-        int quantity = 2;
-        CartEntity existingCart = new CartEntity(UUID.randomUUID(), user, Instant.now());
+        CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
 
-        when(cartRepository.findByUserId(user)).thenReturn(Optional.of(existingCart));
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
 
         // when
-        assertThatThrownBy(() -> cartService.updateItemQuantity(user, productId, quantity))
+        assertThatThrownBy(() -> cartService.updateItemQuantity(USER_ID, productId, QUANTITY))
             .isInstanceOf(CartItemNotFoundException.class)
             .hasMessage("Product with id: " + productId + " not found in cart");
     }
-    
+
     @Test
     void shouldRemoveItemWhenInCart() {
         // given
-        String user = "user";
         UUID productId = UUID.randomUUID();
-        int existingQuantity = 2;
 
-        CartEntity existingCart = new CartEntity(UUID.randomUUID(), user, Instant.now());
-        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, existingQuantity));
+        CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
+        existingCart.addItem(new CartItemEntity(UUID.randomUUID(), productId, QUANTITY));
 
-        when(cartRepository.findByUserId(user)).thenReturn(Optional.of(existingCart));
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
 
         // when
-        cartService.removeItem(user, productId);
+        cartService.removeItem(USER_ID, productId);
 
         // then
-        ArgumentCaptor<CartEntity> cartCaptor = ArgumentCaptor.forClass(CartEntity.class);
-        verify(cartRepository).save(cartCaptor.capture());
-        CartEntity saved = cartCaptor.getValue();
+        assertThat(existingCart.getId()).isNotNull();
+        assertThat(existingCart.getUserId()).isEqualTo(USER_ID);
+        assertThat(existingCart.getItems()).isEmpty();
+    }
 
-        assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getUserId()).isEqualTo(user);
-        assertThat(saved.getItems()).isEmpty();
+    private static ProductResponse getProduct(UUID productId, boolean available) {
+        return new ProductResponse(
+            productId,
+            "Product Name",
+            "Product Description",
+            new BigDecimal("10.0"),
+            available,
+            Instant.now());
     }
 }

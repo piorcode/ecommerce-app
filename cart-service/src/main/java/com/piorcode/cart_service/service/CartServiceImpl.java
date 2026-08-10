@@ -1,7 +1,10 @@
 package com.piorcode.cart_service.service;
 
+import com.piorcode.cart_service.api.ProductResponse;
+import com.piorcode.cart_service.client.ProductServiceClient;
 import com.piorcode.cart_service.exception.CartItemNotFoundException;
 import com.piorcode.cart_service.exception.CartNotFoundException;
+import com.piorcode.cart_service.exception.ProductUnavailableException;
 import com.piorcode.cart_service.persistence.CartEntity;
 import com.piorcode.cart_service.persistence.CartItemEntity;
 import com.piorcode.cart_service.persistence.CartRepository;
@@ -15,22 +18,30 @@ import java.util.UUID;
 public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
+    
+    private final ProductServiceClient productServiceClient;
 
-    public CartServiceImpl(CartRepository cartRepository) {
+    public CartServiceImpl(CartRepository cartRepository, ProductServiceClient productServiceClient) {
         this.cartRepository = cartRepository;
+        this.productServiceClient = productServiceClient;
     }
 
     @Override
     @Transactional
     public void addItem(String userId, UUID productId, int quantity) {
-        CartEntity cartEntity = cartRepository
-            .findByUserId(userId)
-            .orElseGet(() -> new CartEntity(UUID.randomUUID(), userId, Instant.now()));
+        ProductResponse product = productServiceClient.getProduct(productId);
 
-        cartEntity.findByProductId(productId)
+        if (!product.available()) {
+            throw new ProductUnavailableException(product.id());
+        }
+        
+        CartEntity cartEntity = getOrCreateCart(userId);
+
+        cartEntity
+            .findByProductId(product.id())
             .ifPresentOrElse(item -> item.increaseQuantity(quantity),
                 () -> {
-                    CartItemEntity item = new CartItemEntity(UUID.randomUUID(), productId, quantity);
+                    CartItemEntity item = new CartItemEntity(UUID.randomUUID(), product.id(), quantity);
                     cartEntity.addItem(item);
                 }
             );
@@ -41,32 +52,36 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void updateItemQuantity(String userId, UUID productId, int quantity) {
-        CartEntity cartEntity = cartRepository
-            .findByUserId(userId)
-            .orElseThrow(() -> new CartNotFoundException(userId));
-
-        CartItemEntity cartItemEntity = cartEntity
-            .findByProductId(productId)
-            .orElseThrow(() -> new CartItemNotFoundException(productId));
-
+        CartEntity cartEntity = getExistingCart(userId);
+        CartItemEntity cartItemEntity = findItemInCart(productId, cartEntity);
         cartItemEntity.updateQuantity(quantity);
-
         cartRepository.save(cartEntity);
     }
 
     @Override
     @Transactional
     public void removeItem(String userId, UUID productId) {
-        CartEntity cartEntity = cartRepository
+        CartEntity cartEntity = getExistingCart(userId);
+        CartItemEntity cartItemEntity = findItemInCart(productId, cartEntity);
+        cartEntity.removeItem(cartItemEntity);
+        cartRepository.save(cartEntity);
+    }
+
+    private CartEntity getOrCreateCart(String userId) {
+        return cartRepository
+            .findByUserId(userId)
+            .orElseGet(() -> new CartEntity(UUID.randomUUID(), userId, Instant.now()));
+    }
+
+    private CartEntity getExistingCart(String userId) {
+        return cartRepository
             .findByUserId(userId)
             .orElseThrow(() -> new CartNotFoundException(userId));
+    }
 
-        CartItemEntity cartItemEntity = cartEntity
+    private CartItemEntity findItemInCart(UUID productId, CartEntity cartEntity) {
+        return cartEntity
             .findByProductId(productId)
             .orElseThrow(() -> new CartItemNotFoundException(productId));
-
-        cartEntity.removeItem(cartItemEntity);
-
-        cartRepository.save(cartEntity);
     }
 }
