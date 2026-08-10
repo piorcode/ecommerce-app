@@ -1,6 +1,6 @@
 package com.piorcode.cart_service.client;
 
-import com.piorcode.cart_service.api.ProductResponse;
+import com.piorcode.cart_service.api.dto.ProductResponse;
 import com.piorcode.cart_service.exception.ProductNotFoundException;
 import com.piorcode.cart_service.exception.ProductServiceUnavailableException;
 import org.springframework.stereotype.Component;

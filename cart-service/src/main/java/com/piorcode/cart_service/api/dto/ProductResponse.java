@@ -1,4 +1,4 @@
-package com.piorcode.cart_service.api;
+package com.piorcode.cart_service.api.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;

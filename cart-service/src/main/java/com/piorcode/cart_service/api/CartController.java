@@ -1,5 +1,7 @@
 package com.piorcode.cart_service.api;
 
+import com.piorcode.cart_service.api.dto.AddCartItemRequest;
+import com.piorcode.cart_service.api.dto.UpdateCartItemRequest;
 import com.piorcode.cart_service.service.CartService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

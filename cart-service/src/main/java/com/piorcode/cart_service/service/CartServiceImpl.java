@@ -1,6 +1,6 @@
 package com.piorcode.cart_service.service;
 
-import com.piorcode.cart_service.api.ProductResponse;
+import com.piorcode.cart_service.api.dto.ProductResponse;
 import com.piorcode.cart_service.client.ProductServiceClient;
 import com.piorcode.cart_service.exception.CartItemNotFoundException;
 import com.piorcode.cart_service.exception.CartNotFoundException;
