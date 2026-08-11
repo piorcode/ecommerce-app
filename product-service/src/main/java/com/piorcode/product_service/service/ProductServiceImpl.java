@@ -6,11 +6,13 @@ import com.piorcode.product_service.exception.ProductNotFoundException;
 import com.piorcode.product_service.mapper.ProductMapper;
 import com.piorcode.product_service.persistence.ProductRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional(readOnly = true)
 public class ProductServiceImpl implements ProductService {
     
     private final ProductRepository productRepository;
