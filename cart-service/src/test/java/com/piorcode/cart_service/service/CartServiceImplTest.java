@@ -1,5 +1,7 @@
 package com.piorcode.cart_service.service;
 
+import com.piorcode.cart_service.api.dto.CartItemResponse;
+import com.piorcode.cart_service.api.dto.CartResponse;
 import com.piorcode.cart_service.api.dto.ProductResponse;
 import com.piorcode.cart_service.client.ProductServiceClient;
 import com.piorcode.cart_service.exception.CartItemNotFoundException;
@@ -52,6 +54,31 @@ class CartServiceImplTest {
     }
 
     @Test
+    void shouldReturnCartForUser() {
+        // given
+        UUID productId = UUID.randomUUID();
+
+        CartEntity existingCart = new CartEntity(UUID.randomUUID(), USER_ID, Instant.now());
+        existingCart.addItem(getCartItem(productId));
+
+        when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
+
+        // when
+        CartResponse response = cartService.getCart(USER_ID);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.cartId()).isEqualTo(existingCart.getId());
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).productId()).isEqualTo(productId);
+        assertThat(response.items().get(0).productName()).isEqualTo(PRODUCT_NAME);
+        assertThat(response.items().get(0).price()).isEqualTo(ITEM_PRICE);
+        assertThat(response.items().get(0).quantity()).isEqualTo(QUANTITY);
+
+        verify(cartRepository).findByUserId(USER_ID);
+    }
+
+    @Test
     void shouldCreateCartAndAddAvailableItemWhenCartDoesNotExist() {
         // given
         UUID productId = UUID.randomUUID();
@@ -98,7 +125,6 @@ class CartServiceImplTest {
         existingCart.addItem(getCartItem(productId));
 
         when(productServiceClient.getProduct(productId)).thenReturn(getProduct(productId, true));
-
         when(cartRepository.findByUserId(USER_ID)).thenReturn(Optional.of(existingCart));
 
         // when

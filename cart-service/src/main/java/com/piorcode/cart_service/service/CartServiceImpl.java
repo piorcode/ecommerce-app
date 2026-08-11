@@ -1,5 +1,7 @@
 package com.piorcode.cart_service.service;
 
+import com.piorcode.cart_service.api.dto.CartItemResponse;
+import com.piorcode.cart_service.api.dto.CartResponse;
 import com.piorcode.cart_service.api.dto.ProductResponse;
 import com.piorcode.cart_service.client.ProductServiceClient;
 import com.piorcode.cart_service.exception.CartItemNotFoundException;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -24,6 +27,15 @@ public class CartServiceImpl implements CartService {
     public CartServiceImpl(CartRepository cartRepository, ProductServiceClient productServiceClient) {
         this.cartRepository = cartRepository;
         this.productServiceClient = productServiceClient;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CartResponse getCart(String userId) {
+        CartEntity cartEntity = cartRepository.findByUserId(userId)
+            .orElseThrow(() -> new CartNotFoundException(userId));
+        
+        return toCartResponse(cartEntity);
     }
 
     @Override
@@ -90,5 +102,19 @@ public class CartServiceImpl implements CartService {
         return cartEntity
             .findByProductId(productId)
             .orElseThrow(() -> new CartItemNotFoundException(productId));
+    }
+
+    private CartResponse toCartResponse(CartEntity cartEntity) {
+        List<CartItemResponse> items = cartEntity
+            .getItems()
+            .stream()
+            .map(this::toCartItemResponse)
+            .toList();
+
+        return new CartResponse(cartEntity.getId(), items);
+    }
+
+    private CartItemResponse toCartItemResponse(CartItemEntity item) {
+        return new CartItemResponse(item.getProductId(), item.getProductName(), item.getPrice(), item.getQuantity());
     }
 }

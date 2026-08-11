@@ -1,6 +1,7 @@
 package com.piorcode.cart_service.api;
 
 import com.piorcode.cart_service.api.dto.AddCartItemRequest;
+import com.piorcode.cart_service.api.dto.CartResponse;
 import com.piorcode.cart_service.api.dto.UpdateCartItemRequest;
 import com.piorcode.cart_service.service.CartService;
 import jakarta.validation.Valid;
@@ -18,6 +19,12 @@ public class CartController {
 
     public CartController(CartService cartService) {
         this.cartService = cartService;
+    }
+
+    @GetMapping
+    public CartResponse getCart(Authentication authentication) {
+        String userId = authentication.getName();
+        return cartService.getCart(userId);
     }
 
     @PostMapping("/items")
