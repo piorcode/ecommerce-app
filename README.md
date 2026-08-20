@@ -23,6 +23,8 @@ The project is implemented as a small but production-minded assignment, with sep
 - **JWT authentication**
 - **Springdoc OpenAPI**
 - **Spring Boot Actuator**
+- **Docker**
+- **Docker Compose**
 
 ## Architecture
 
@@ -135,6 +137,12 @@ This was prioritized because the most important assignment-specific behavior is 
 
 Given more time, I would add controller tests with MockMvc, JWT security tests and integration tests covering communication between Cart Service and Product Service.
 
+### Docker-based local setup
+
+Dockerfiles and Docker Compose configuration are included to simplify local development and service startup.
+
+Both services can be started together using a single Docker Compose command. Since both services use H2 in-memory databases, no additional infrastructure containers are required.
+
 ## Services
 
 ### Product Service
@@ -229,14 +237,42 @@ Main `cart_items` fields:
 
 CartItemEntity has a uniqueness constraint on the combination of cart and product. This prevents storing duplicate rows for the same product in the same cart.
 
-## Running Locally
+## Running the application
 
 ### Prerequisites
 
 Make sure you have installed:
 - Java 17 or newer,
 - Maven,
-- Git.
+- Docker.
+
+### Running with Docker
+
+The project includes Dockerfiles for both services and can be started using Docker Compose.
+
+### Build application artifacts
+
+From the root directory:
+
+```bash
+mvn clean package
+```
+
+### Start services with Docker Compose
+
+From the root directory:
+
+```bash
+docker compose up --build
+```
+
+This starts:
+- Product Service on port 8081,
+- Cart Service on port 8082.
+
+Docker Compose was implemented as an additional improvement to simplify local startup and allow both services to be launched with a single command.
+
+### Running Locally
 
 ### Build the project
 
@@ -604,8 +640,8 @@ Due to the assignment timebox, I focused mainly on delivering the required busin
 - add JWT security tests for protected Cart Service endpoints,
 - add integration tests for communication between Cart Service and Product Service,
 - add `DELETE /api/v1/cart` endpoint to clear all items from the authenticated user's cart,
+- improve Docker setup with multi-stage builds,
 - add pagination in Product Service,
-- add Docker Compose setup for easier local startup,
 - add Redis caching for retrieving single product details,
 - improve logging with structured logs and correlation ids.
 
